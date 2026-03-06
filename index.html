@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>PSS PitStop Pal Quiz</title>
+
+<style>
+
+body{
+    font-family: Arial, sans-serif;
+    background:#fff9f2;
+    text-align:center;
+    margin:0;
+    padding:20px;
+}
+
+.container{
+    max-width:500px;
+    margin:auto;
+}
+
+h1{
+    color:#003664;
+}
+
+button{
+    display:block;
+    width:100%;
+    padding:14px;
+    margin:10px 0;
+    border:none;
+    border-radius:12px;
+    font-size:16px;
+    background:#1995eb;
+    color:white;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#1478bd;
+}
+
+.result{
+    font-size:22px;
+    margin-top:20px;
+    color:#003664;
+}
+
+.startBtn{
+    background:#f47821;
+}
+
+</style>
+</head>
+
+
+<body>
+
+<div class="container">
+
+<h1>Which PitStop Pal Are You?</h1>
+<p>Answer a few quick questions and discover your wellness style.</p>
+
+<div id="quiz"></div>
+
+<button class="startBtn" onclick="startQuiz()">Start Quiz</button>
+
+<div class="result" id="result"></div>
+
+</div>
+
+
+<script>
+
+let currentQuestion = 0;
+
+let scores = {
+perry:0,
+ping:0,
+ola:0,
+ty:0,
+sky:0,
+tobi:0,
+iggy:0
+};
+
+const questions = [
+
+{
+q:"After a stressful day, what helps you most?",
+a:[
+{text:"Make a small plan for tomorrow", pal:"perry"},
+{text:"Talk to someone I trust", pal:"iggy"}
+]
+},
+
+{
+q:"When exams are coming, you usually...",
+a:[
+{text:"Remind yourself why your goals matter", pal:"ping"},
+{text:"Take breaks to recharge", pal:"tobi"}
+]
+},
+
+{
+q:"Your ideal reset activity is...",
+a:[
+{text:"Going for a walk or exercise", pal:"ola"},
+{text:"Taking a good nap or sleeping early", pal:"sky"}
+]
+},
+
+{
+q:"When you feel low energy, you...",
+a:[
+{text:"Grab a proper meal or snack", pal:"ty"},
+{text:"Write down what you need to do next", pal:"perry"}
+]
+}
+
+];
+
+
+function startQuiz(){
+document.querySelector(".startBtn").style.display="none";
+showQuestion();
+}
+
+
+function showQuestion(){
+
+if(currentQuestion>=questions.length){
+showResult();
+return;
+}
+
+let q = questions[currentQuestion];
+
+let html = "<h3>"+q.q+"</h3>";
+
+q.a.forEach(option=>{
+html += `<button onclick="selectAnswer('${option.pal}')">${option.text}</button>`;
+});
+
+document.getElementById("quiz").innerHTML = html;
+
+}
+
+
+function selectAnswer(pal){
+
+scores[pal]++;
+
+currentQuestion++;
+
+showQuestion();
+
+}
+
+
+function showResult(){
+
+let topPal = Object.keys(scores).reduce((a,b)=> scores[a]>scores[b]?a:b);
+
+let resultText = "";
+
+if(topPal=="perry") resultText="Perry – Personal Skills";
+if(topPal=="ping") resultText="Ping – Purpose";
+if(topPal=="ola") resultText="Ola – On The Move";
+if(topPal=="ty") resultText="Ty – Thoughtful Eating";
+if(topPal=="sky") resultText="Sky – Sleep";
+if(topPal=="tobi") resultText="Tobi – Timeout";
+if(topPal=="iggy") resultText="Iggy – Interaction";
+
+document.getElementById("quiz").innerHTML="";
+document.getElementById("result").innerHTML="Your PitStop Pal is:<br><b>"+resultText+"</b>";
+
+}
+
+</script>
+
+</body>
+</html>
