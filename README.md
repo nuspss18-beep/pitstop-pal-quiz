@@ -460,7 +460,6 @@ pitstop-pal-quiz/
 
 This quiz is designed for:
 
-- NUS students
 - NUS PSS welfare/event participants
 - users engaging with the PitStop Pal campaign
 - event visitors accessing the quiz by QR code
@@ -469,7 +468,9 @@ This quiz is designed for:
 
 ## Educational / Campaign Purpose
 
-This project is intended as an interactive engagement tool to help users reflect on their wellness style in a light and accessible format.
+This project is intended as an interactive engagement tool to help users reflect on their wellness style in a light and accessible format besides collecting the welfare pack. 
+
+## Disclaimer
 
 It is not a psychological diagnostic tool.  
 Its purpose is awareness, engagement, and reflection.
@@ -479,6 +480,9 @@ Its purpose is awareness, engagement, and reflection.
 ## Credits
 
 Created for **NUS Peer Student Supporters (PSS)**.
+
+The story line is created by Andrew Koh
+The code is mainly GenAI generated and modified by Luke Lou Yu. 
 
 PitStop Pal concept, character framing, and wellness theme are based on the campaign materials used for student engagement.
 
