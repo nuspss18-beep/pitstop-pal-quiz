@@ -119,20 +119,26 @@ document.addEventListener("DOMContentLoaded", () => {
         <p class="option-desc">${opt.text}</p>
       `;
 
-      button.addEventListener("click", () => {
-        scores[opt.pal] += opt.points;
-        answerHistory.push(opt.pal);
-        currentQuestionIndex += 1;
+     button.addEventListener("click", () => {
+  scores[opt.pal] += opt.points;
 
-        if (currentQuestionIndex < questions.length) {
-          renderQuestion();
-        } else {
-          showResult();
-        }
-      });
-
-      optionsContainer.appendChild(button);
+  if (Array.isArray(opt.extra)) {
+    opt.extra.forEach((change) => {
+      if (scores[change.pal] !== undefined) {
+        scores[change.pal] += change.points;
+      }
     });
+  }
+
+  answerHistory.push(opt.pal);
+  currentQuestionIndex += 1;
+
+  if (currentQuestionIndex < questions.length) {
+    renderQuestion();
+  } else {
+    showResult();
+  }
+});
   }
 
   function getTopPal() {
