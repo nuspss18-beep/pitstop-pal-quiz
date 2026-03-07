@@ -45,10 +45,6 @@ Users answer a set of questions based on everyday student-life situations. Their
 3. Read each question and choose one answer.
 4. Continue until all 14 questions are completed.
 5. View your matched PitStop Pal.
-6. Optionally:
-   - retry the quiz
-   - go back to the home page
-   - view all PitStop Pals
 
 ---
 
