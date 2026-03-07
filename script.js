@@ -142,6 +142,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     optionsContainer.appendChild(button);
   });
+ }
+  
 
   
   function getTopPal() {
