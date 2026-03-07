@@ -152,6 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return tied[0];
   }
 
+  /*
   function renderFinalScores() {
     finalScoreList.innerHTML = "";
 
@@ -163,7 +164,20 @@ document.addEventListener("DOMContentLoaded", () => {
       row.innerHTML = `<strong>${pals[key].short}</strong><span>${value}</span>`;
       finalScoreList.appendChild(row);
     });
-  } 
+  } */
+
+  function renderFinalScores() {
+    if (!finalScoreList) return;
+    finalScoreList.innerHTML = "";
+    const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+
+  sorted.forEach(([key, value]) => {
+    const row = document.createElement("div");
+    row.className = "score-row";
+    row.innerHTML = `<strong>${pals[key].short}</strong><span>${value}</span>`;
+    finalScoreList.appendChild(row);
+  });
+}
 
   function showResult() {
     const topPal = getTopPal();
