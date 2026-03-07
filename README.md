@@ -481,8 +481,10 @@ Its purpose is awareness, engagement, and reflection.
 
 Created for **NUS Peer Student Supporters (PSS)**.
 
-The story line is created by Andrew Koh
+The story line is created by Andrew Koh.
+
 The code is mainly GenAI generated and modified by Luke Lou Yu. 
+
 
 PitStop Pal concept, character framing, and wellness theme are based on the campaign materials used for student engagement.
 
