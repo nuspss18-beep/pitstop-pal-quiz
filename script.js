@@ -200,28 +200,36 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-async function showResult() {
+  async function showResult() {
   if (typeof pals === "undefined") {
     showDataError("pals is missing. Please check data.js for errors.");
     return;
   }
 
   const topPal = getTopPal();
-  const assignedPal = await getAssignedPal(topPal);
+  let finalPalKey = topPal;
 
-  if (!assignedPal) {
-    alert("Sorry, no pal could be assigned right now.");
-    return;
+  try {
+    const assignedPal = await getAssignedPal(topPal);
+
+    if (assignedPal && pals[assignedPal]) {
+      finalPalKey = assignedPal;
+    } else {
+      console.warn("Backend unavailable or invalid pal returned. Falling back to local result.");
+    }
+  } catch (error) {
+    console.error("Failed to get assigned pal from backend:", error);
+    console.warn("Falling back to local result.");
   }
 
-  const result = pals[assignedPal];
+  const result = pals[finalPalKey];
 
   if (!result) {
     showDataError("Result data is missing.");
     return;
   }
 
-  lastResultKey = assignedPal;
+  lastResultKey = finalPalKey;
 
   if (resultImage) {
     resultImage.src = result.image;
