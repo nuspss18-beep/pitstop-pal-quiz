@@ -136,15 +136,6 @@ document.addEventListener("DOMContentLoaded", () => {
       button.style.setProperty("--accent-soft", pal.soft || "#eee");
 
       button.innerHTML = `
-        <div class="option-top">
-          <div class="option-avatar">
-            <img src="${pal.image}" alt="${pal.short}">
-          </div>
-          <div>
-            <div class="option-title">${pal.short}</div>
-            <div class="option-label">${pal.badge}</div>
-          </div>
-        </div>
         <p class="option-desc">${opt.text}</p>
       `;
 
