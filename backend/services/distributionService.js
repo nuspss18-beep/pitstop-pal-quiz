@@ -1,23 +1,21 @@
-// In-memory stock (later we upgrade to DB or JSON file)
 let stock = {
-  A: 70,
-  B: 70,
-  C: 70,
-  D: 70,
-  E: 70,
-  F: 70,
-  G: 70
+  perry: 70,
+  ping: 70,
+  ola: 70,
+  ty: 70,
+  sky: 70,
+  tobi: 70,
+  iggy: 70
 };
 
-// Count how many each type has been given
 let distributed = {
-  A: 0,
-  B: 0,
-  C: 0,
-  D: 0,
-  E: 0,
-  F: 0,
-  G: 0
+  perry: 0,
+  ping: 0,
+  ola: 0,
+  ty: 0,
+  sky: 0,
+  tobi: 0,
+  iggy: 0
 };
 
 // MAIN FUNCTION

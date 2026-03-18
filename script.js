@@ -200,46 +200,53 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function showResult() {
-    if (typeof pals === "undefined") {
-      showDataError("pals is missing. Please check data.js for errors.");
-      return;
-    }
-
-    const topPal = getTopPal();
-    const result = pals[topPal];
-
-    if (!result) {
-      showDataError("Result data is missing.");
-      return;
-    }
-
-    lastResultKey = topPal;
-
-    if (resultImage) {
-      resultImage.src = result.image;
-      resultImage.alt = result.short;
-    }
-
-    if (resultName) {
-      resultName.textContent = result.name;
-    }
-
-    if (resultDesc) {
-      resultDesc.textContent = result.desc;
-    }
-
-    if (resultBadge) {
-      resultBadge.textContent = result.badge;
-    }
-
-    if (resultTip) {
-      resultTip.textContent = result.tip;
-    }
-
-    renderFinalScores();
-    showScreen(resultScreen);
+async function showResult() {
+  if (typeof pals === "undefined") {
+    showDataError("pals is missing. Please check data.js for errors.");
+    return;
   }
+
+  const topPal = getTopPal();
+  const assignedPal = await getAssignedPal(topPal);
+
+  if (!assignedPal) {
+    alert("Sorry, no pal could be assigned right now.");
+    return;
+  }
+
+  const result = pals[assignedPal];
+
+  if (!result) {
+    showDataError("Result data is missing.");
+    return;
+  }
+
+  lastResultKey = assignedPal;
+
+  if (resultImage) {
+    resultImage.src = result.image;
+    resultImage.alt = result.short;
+  }
+
+  if (resultName) {
+    resultName.textContent = result.name;
+  }
+
+  if (resultDesc) {
+    resultDesc.textContent = result.desc;
+  }
+
+  if (resultBadge) {
+    resultBadge.textContent = result.badge;
+  }
+
+  if (resultTip) {
+    resultTip.textContent = result.tip;
+  }
+
+  renderFinalScores();
+  showScreen(resultScreen);
+}
 
   function renderAllPals() {
     if (!allPalsGrid || typeof pals === "undefined") return;
