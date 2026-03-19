@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let lastResultKey = null;
   let scores = createEmptyScores();
   let answerHistory = [];
+  let isSubmittingResult = false;
 
   function createEmptyScores() {
     return {
@@ -188,52 +189,52 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function showResult() {
-  console.log("showResult() called");
-  console.log("scores =", scores);
-  console.log("answerHistory =", answerHistory);
+    console.log("showResult() called");
+    console.log("scores =", scores);
+    console.log("answerHistory =", answerHistory);
 
-  if (typeof pals === "undefined") {
-    showDataError("pals is missing. Please check data.js for errors.");
-    return;
+    if (typeof pals === "undefined") {
+      showDataError("pals is missing. Please check data.js for errors.");
+      return;
+    }
+
+    const topPal = getTopPal();
+    console.log("topPal =", topPal);
+
+    const result = pals[topPal];
+    console.log("result =", result);
+
+    if (!result) {
+      showDataError("Result data is missing.");
+      return;
+    }
+
+    lastResultKey = topPal;
+
+    if (resultImage) {
+      resultImage.src = result.image;
+      resultImage.alt = result.short;
+    }
+
+    if (resultName) {
+      resultName.textContent = result.name;
+    }
+
+    if (resultDesc) {
+      resultDesc.textContent = result.desc;
+    }
+
+    if (resultBadge) {
+      resultBadge.textContent = result.badge;
+    }
+
+    if (resultTip) {
+      resultTip.textContent = result.tip;
+    }
+
+    showScreen(resultScreen);
+    console.log("Result screen shown");
   }
-
-  const topPal = getTopPal();
-  console.log("topPal =", topPal);
-
-  const result = pals[topPal];
-  console.log("result =", result);
-
-  if (!result) {
-    showDataError("Result data is missing.");
-    return;
-  }
-
-  lastResultKey = topPal;
-
-  if (resultImage) {
-    resultImage.src = result.image;
-    resultImage.alt = result.short;
-  }
-
-  if (resultName) {
-    resultName.textContent = result.name;
-  }
-
-  if (resultDesc) {
-    resultDesc.textContent = result.desc;
-  }
-
-  if (resultBadge) {
-    resultBadge.textContent = result.badge;
-  }
-
-  if (resultTip) {
-    resultTip.textContent = result.tip;
-  }
-
-  showScreen(resultScreen);
-  console.log("Result screen shown");
-}
 
   function renderAllPals() {
     if (!allPalsGrid || typeof pals === "undefined") return;
