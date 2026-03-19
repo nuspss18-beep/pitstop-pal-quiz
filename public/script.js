@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <p class="option-desc">${opt.text}</p>
       `;
 
-      button.addEventListener("click", () => {
+      button.addEventListener("click", async () => {
         console.log("Option clicked:", opt.text, "| pal =", opt.pal, "| qIndex =", currentQuestionIndex);
 
         if (scores[opt.pal] !== undefined) {
@@ -163,8 +163,9 @@ document.addEventListener("DOMContentLoaded", () => {
           renderQuestion();
         } else {
           console.log("Reached final question. Calling showResult()...");
-          showResult();
+          await showResult();
         }
+
       });
 
       optionsContainer.appendChild(button);
@@ -188,28 +189,20 @@ document.addEventListener("DOMContentLoaded", () => {
     return tied[0];
   }
 
-  function showResult() {
-    console.log("showResult() called");
-    console.log("scores =", scores);
-    console.log("answerHistory =", answerHistory);
-
+  function renderAssignedPal(palKey) {
     if (typeof pals === "undefined") {
       showDataError("pals is missing. Please check data.js for errors.");
       return;
     }
 
-    const topPal = getTopPal();
-    console.log("topPal =", topPal);
-
-    const result = pals[topPal];
-    console.log("result =", result);
+    const result = pals[palKey];
 
     if (!result) {
       showDataError("Result data is missing.");
       return;
     }
 
-    lastResultKey = topPal;
+    lastResultKey = palKey;
 
     if (resultImage) {
       resultImage.src = result.image;
@@ -233,8 +226,50 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     showScreen(resultScreen);
-    console.log("Result screen shown");
   }
+
+  async function showResult() {
+    if (isSubmittingResult) return;
+    isSubmittingResult = true;
+
+    if (questionTitle) {
+      questionTitle.textContent = "Assigning your PitStop Pal...";
+    }
+
+    if (questionSub) {
+      questionSub.textContent = "Please wait a moment.";
+    }
+
+    if (optionsContainer) {
+      optionsContainer.innerHTML = "";
+    }
+
+    try {
+      const response = await fetch("/api/quiz/assign", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          scores,
+          answerHistory
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to assign a pal.");
+      }
+
+      renderAssignedPal(data.assignedPal);
+    } catch (error) {
+      showDataError(error.message || "Something went wrong while assigning the result.");
+    } finally {
+      isSubmittingResult = false;
+    }
+  }
+
 
   function renderAllPals() {
     if (!allPalsGrid || typeof pals === "undefined") return;
