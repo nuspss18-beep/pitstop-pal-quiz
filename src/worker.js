@@ -1,7 +1,6 @@
 import { ACTUAL_STOCK, PAL_KEYS, TEST_STOCK } from "./constants.js";
 
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
-const STOCK_THRESHOLD = 0.30;
 
 function normalizeMap(map) {
   return Object.fromEntries(
@@ -15,12 +14,6 @@ function zeroMap() {
 
 function totalRemaining(stock) {
   return Object.values(stock).reduce((sum, value) => sum + value, 0);
-}
-
-function remainingRatio(state, palKey) {
-  const initial = Number(state.initialStock?.[palKey] || 0);
-  if (initial <= 0) return 0;
-  return Number(state.stock?.[palKey] || 0) / initial;
 }
 
 function json(data, status = 200) {
@@ -62,53 +55,68 @@ function getPreferredPal(scores, answerHistory) {
   return tied[0] || PAL_KEYS[0];
 }
 
-function chooseAssignedPal(state, preferredPal, rankedPals = []) {
-  const orderedPrefs = [
-    preferredPal,
-    ...rankedPals.filter((key) => key !== preferredPal)
-  ].filter((key) => PAL_KEYS.includes(key));
+// EDIT: keep original stock so we can compare current stock against 30%
+function getOriginalStockMap(state) {
+  return normalizeMap(state.originalStock || ACTUAL_STOCK);
+}
 
-  console.log("[ALLOCATOR] preferredPal =", preferredPal);
-  console.log("[ALLOCATOR] rankedPals =", JSON.stringify(rankedPals));
-  console.log("[ALLOCATOR] stock =", JSON.stringify(state.stock));
-  console.log("[ALLOCATOR] initialStock =", JSON.stringify(state.initialStock));
-  console.log("[ALLOCATOR] distributed =", JSON.stringify(state.distributed));
+// EDIT: pal is considered "healthy" only if remaining stock is above 30% of original
+function isAboveThreshold(state, palKey) {
+  const originalStock = getOriginalStockMap(state);
+  const original = Number(originalStock[palKey] || 0);
+  const current = Number(state.stock?.[palKey] || 0);
 
-  const healthyPreferred = orderedPrefs.find((key) => {
-    return state.stock[key] > 0 && remainingRatio(state, key) >= STOCK_THRESHOLD;
-  });
-
-  if (healthyPreferred) {
-    console.log("[ALLOCATOR] assign preferred/next healthy =", healthyPreferred);
-    return {
-      assignedPal: healthyPreferred,
-      reason: "preferred_within_threshold"
-    };
+  if (original <= 0 || current <= 0) {
+    return false;
   }
 
-  const available = PAL_KEYS.filter((key) => state.stock[key] > 0);
+  return current > original * 0.3;
+}
+
+// EDIT: least-distributed fallback among available pals
+function chooseLeastDistributedAvailable(state, candidates) {
+  const available = candidates.filter((key) => Number(state.stock?.[key] || 0) > 0);
 
   if (available.length === 0) {
-    console.log("[ALLOCATOR] no stock available");
     return null;
   }
 
-  const fallback = [...available].sort((a, b) => {
-    const byDistributed = state.distributed[a] - state.distributed[b];
+  return [...available].sort((a, b) => {
+    const byDistributed = Number(state.distributed?.[a] || 0) - Number(state.distributed?.[b] || 0);
     if (byDistributed !== 0) return byDistributed;
 
-    const byRatio = remainingRatio(state, b) - remainingRatio(state, a);
-    if (byRatio !== 0) return byRatio;
+    const byStock = Number(state.stock?.[b] || 0) - Number(state.stock?.[a] || 0);
+    if (byStock !== 0) return byStock;
 
-    return state.stock[b] - state.stock[a];
+    return a.localeCompare(b);
   })[0];
+}
 
-  console.log("[ALLOCATOR] fallback least distributed =", fallback);
+// EDIT:
+// 1. Use ranked winning pals from frontend
+// 2. Prefer the highest-ranked pal still above 30% stock
+// 3. If none are above threshold, use least-distributed available fallback
+function chooseAssignedPal(state, preferredPal, rankedPals) {
+  const available = PAL_KEYS.filter((key) => Number(state.stock?.[key] || 0) > 0);
 
-  return {
-    assignedPal: fallback,
-    reason: "least_distributed_fallback"
-  };
+  if (available.length === 0) {
+    return null;
+  }
+
+  const ranked = Array.isArray(rankedPals) && rankedPals.length > 0
+    ? rankedPals.filter((key) => PAL_KEYS.includes(key))
+    : [preferredPal, ...PAL_KEYS.filter((key) => key !== preferredPal)];
+
+  // first pass: take highest-ranked pal still above 30% of original stock
+  for (const palKey of ranked) {
+    if (!available.includes(palKey)) continue;
+    if (isAboveThreshold(state, palKey)) {
+      return palKey;
+    }
+  }
+
+  // second pass: fallback to least-distributed available
+  return chooseLeastDistributedAvailable(state, available);
 }
 
 export default {
@@ -133,43 +141,24 @@ export class InventoryDO {
 
   async loadState() {
     let state = await this.ctx.storage.get("state");
-    let changed = false;
 
     if (!state) {
       state = {
         mode: "actual",
-        initialStock: clone(ACTUAL_STOCK),
+        randomK: Number(this.env.RANDOM_K || 3),
         stock: clone(ACTUAL_STOCK),
+        originalStock: clone(ACTUAL_STOCK), // EDIT: preserve original stock for threshold comparison
         distributed: zeroMap(),
         totalAssigned: 0,
         requestCount: 0
       };
-      changed = true;
-    }
 
-    state.mode = state.mode || "actual";
-
-    const defaultBase =
-      state.mode === "test"
-        ? TEST_STOCK
-        : state.mode === "actual"
-          ? ACTUAL_STOCK
-          : (state.stock || ACTUAL_STOCK);
-
-    if (!state.initialStock) {
-      state.initialStock = clone(defaultBase);
-      changed = true;
-    }
-
-    state.initialStock = normalizeMap(state.initialStock);
-    state.stock = normalizeMap(state.stock || defaultBase);
-    state.distributed = normalizeMap(state.distributed || zeroMap());
-    state.totalAssigned = Math.max(0, Math.floor(Number(state.totalAssigned || 0)));
-    state.requestCount = Math.max(0, Math.floor(Number(state.requestCount || 0)));
-
-    if (changed) {
       await this.ctx.storage.put("state", state);
     }
+
+    state.stock = normalizeMap(state.stock);
+    state.originalStock = normalizeMap(state.originalStock || ACTUAL_STOCK);
+    state.distributed = normalizeMap(state.distributed);
 
     return state;
   }
@@ -206,6 +195,10 @@ export class InventoryDO {
       return this.handleStocks(request);
     }
 
+    if (request.method === "POST" && url.pathname === "/api/admin/random-k") {
+      return this.handleRandomK(request);
+    }
+
     return json({ error: "Not found" }, 404);
   }
 
@@ -220,32 +213,18 @@ export class InventoryDO {
 
     const scores = body?.scores || {};
     const answerHistory = Array.isArray(body?.answerHistory) ? body.answerHistory : [];
+    const rankedPals = Array.isArray(body?.rankedPals) ? body.rankedPals : [];
 
-    const preferredPal = PAL_KEYS.includes(body?.preferredPal)
-      ? body.preferredPal
-      : getPreferredPal(scores, answerHistory);
-
-    const rankedPals = Array.isArray(body?.rankedPals)
-      ? [...new Set(body.rankedPals.filter((key) => PAL_KEYS.includes(key)))]
-      : [preferredPal];
-
+    const preferredPal = body?.preferredPal || getPreferredPal(scores, answerHistory);
     const state = await this.loadState();
+
     state.requestCount = Number(state.requestCount || 0) + 1;
 
-    console.log("[BACKEND] requestCount =", state.requestCount);
+    const assignedPal = chooseAssignedPal(state, preferredPal, rankedPals);
 
-    const allocation = chooseAssignedPal(state, preferredPal, rankedPals);
-
-    if (!allocation) {
+    if (!assignedPal) {
       return json({ error: "All pals are out of stock." }, 409);
     }
-
-    const assignedPal = allocation.assignedPal;
-
-    console.log("[BACKEND] preferredPal =", preferredPal);
-    console.log("[BACKEND] assignedPal =", assignedPal);
-    console.log("[BACKEND] stock(before) =", JSON.stringify(state.stock));
-    console.log("[BACKEND] distributed(before) =", JSON.stringify(state.distributed));
 
     state.stock[assignedPal] -= 1;
     state.distributed[assignedPal] += 1;
@@ -253,14 +232,9 @@ export class InventoryDO {
 
     await this.saveState(state);
 
-    console.log("[BACKEND] stock(after) =", JSON.stringify(state.stock));
-    console.log("[BACKEND] distributed(after) =", JSON.stringify(state.distributed));
-
     return json({
       assignedPal,
       preferredPal,
-      rankedPals,
-      allocationReason: allocation.reason,
       requestCount: state.requestCount,
       remainingTotal: totalRemaining(state.stock),
       stock: state.stock
@@ -272,8 +246,9 @@ export class InventoryDO {
 
     return json({
       mode: state.mode,
-      initialStock: state.initialStock,
+      randomK: state.randomK,
       stock: state.stock,
+      originalStock: state.originalStock,
       distributed: state.distributed,
       totalAssigned: state.totalAssigned,
       remainingTotal: totalRemaining(state.stock)
@@ -295,12 +270,13 @@ export class InventoryDO {
       return badRequest("mode must be 'test' or 'actual'.");
     }
 
-    const baseStock = clone(mode === "test" ? TEST_STOCK : ACTUAL_STOCK);
+    const presetStock = clone(mode === "test" ? TEST_STOCK : ACTUAL_STOCK);
 
     const state = {
       mode,
-      initialStock: clone(baseStock),
-      stock: clone(baseStock),
+      randomK: Number(this.env.RANDOM_K || 3),
+      stock: presetStock,
+      originalStock: clone(presetStock), // EDIT: original stock resets together with preset
       distributed: zeroMap(),
       totalAssigned: 0,
       requestCount: 0
@@ -329,6 +305,7 @@ export class InventoryDO {
 
     const incoming = body?.stock || {};
     const state = await this.loadState();
+
     const nextStock = {};
 
     for (const key of PAL_KEYS) {
@@ -342,8 +319,8 @@ export class InventoryDO {
     }
 
     state.mode = "custom";
-    state.initialStock = clone(nextStock);
-    state.stock = clone(nextStock);
+    state.stock = nextStock;
+    state.originalStock = clone(nextStock); // EDIT: custom stock becomes the new original reference
     state.distributed = zeroMap();
     state.totalAssigned = 0;
     state.requestCount = 0;
@@ -353,6 +330,35 @@ export class InventoryDO {
     return json({
       ok: true,
       message: "Stock updated.",
+      state: {
+        ...state,
+        remainingTotal: totalRemaining(state.stock)
+      }
+    });
+  }
+
+  async handleRandomK(request) {
+    let body;
+
+    try {
+      body = await request.json();
+    } catch {
+      return badRequest("Invalid JSON body.");
+    }
+
+    const randomK = Number(body?.randomK);
+    const state = await this.loadState();
+
+    if (!Number.isInteger(randomK) || randomK < 1 || randomK > PAL_KEYS.length) {
+      return badRequest(`randomK must be an integer from 1 to ${PAL_KEYS.length}.`);
+    }
+
+    state.randomK = randomK;
+    await this.saveState(state);
+
+    return json({
+      ok: true,
+      message: "randomK updated.",
       state: {
         ...state,
         remainingTotal: totalRemaining(state.stock)

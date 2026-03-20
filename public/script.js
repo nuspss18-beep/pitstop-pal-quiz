@@ -48,19 +48,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function createEmptyScores() {
-    return {
-      perry: 0,
-      ping: 0,
-      ola: 0,
-      ty: 0,
-      sky: 0,
-      tobi: 0,
-      iggy: 0
-    };
+    return Object.fromEntries(PAL_KEYS.map((key) => [key, 0]));
   }
 
   function getRankedPals() {
-    return [...Object.keys(scores)].sort((a, b) => {
+    return [...PAL_KEYS].sort((a, b) => {
       const byScore = scores[b] - scores[a];
       if (byScore !== 0) return byScore;
 
@@ -70,23 +62,40 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // EDIT: only keep pals that actually have text for this adaptive question
   function getAdaptiveCandidatesForQuestion(questionId) {
     return getRankedPals().filter((palKey) => {
       return Boolean(adaptiveOptionBank?.[palKey]?.[questionId]);
     });
   }
 
+  // EDIT: fallback pool from all pals if top-ranked pals do not have text for this question
+  function getFallbackCandidatesForQuestion(questionId, exclude = []) {
+    return PAL_KEYS.filter((palKey) => {
+      return (
+        !exclude.includes(palKey) &&
+        Boolean(adaptiveOptionBank?.[palKey]?.[questionId])
+      );
+    });
+  }
+
+  // EDIT: build adaptive questions using ranking first, then fallback candidates.
+  // This ensures all 6 questions can still be shown even if q4/q5 only exist for some pals.
   function buildAdaptiveQuestions() {
     const ranking = getRankedPals();
     rankedPals = ranking;
 
-    return adaptiveTemplates.map((template, index) => {
-      const optionCount = index < 3 ? 2 : 4;
+    return adaptiveTemplates.map((template) => {
+      const rankedCandidates = getAdaptiveCandidatesForQuestion(template.id);
+      const optionCount = 2; // EDIT: keep q4-q6 as 2-option adaptive questions
 
-      const selectedPals = getAdaptiveCandidatesForQuestion(template.id).slice(
-        0,
-        optionCount
-      );
+      let selectedPals = rankedCandidates.slice(0, optionCount);
+
+      // EDIT: if not enough ranked candidates, top up from all valid pals
+      if (selectedPals.length < optionCount) {
+        const fallback = getFallbackCandidatesForQuestion(template.id, selectedPals);
+        selectedPals = [...selectedPals, ...fallback.slice(0, optionCount - selectedPals.length)];
+      }
 
       return {
         id: template.id,
@@ -150,6 +159,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function getTotalQuestionCount() {
+    // EDIT: always show full 6-question progress
     return fixedQuestions.length + adaptiveTemplates.length;
   }
 
@@ -274,11 +284,13 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
 
       button.addEventListener("click", async () => {
-        console.log("Option clicked:", opt.text, "| pal =", opt.pal, "| qIndex =", currentQuestionIndex);
-
+        // EDIT: store the answer so all 6 questions determine the final winner
         userAnswers[currentQuestionIndex] = cloneAnswer(opt);
 
+        // EDIT: recompute full state from saved answers
         recalculateStateFromAnswers();
+
+        // EDIT: after fixed questions are done, rebuild adaptive path
         updateQuestionSet();
 
         currentQuestionIndex += 1;
@@ -295,8 +307,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderAssignedPal(palKey) {
-    console.log("[FRONTEND] rendering pal =", palKey);
-
     if (typeof pals === "undefined") {
       showDataError("pals is missing. Please check data.js for errors.");
       return;
@@ -305,7 +315,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const result = pals[palKey];
 
     if (!result) {
-      console.error("[FRONTEND] result not found for pal =", palKey);
       showDataError("Result data is missing.");
       return;
     }
@@ -315,10 +324,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (resultImage) {
       resultImage.src = getAssetUrl(result.image);
       resultImage.alt = result.short;
-
-      resultImage.onerror = () => {
-        console.error("Failed to load result image:", resultImage.src);
-      };
     }
 
     if (resultName) {
@@ -349,23 +354,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const ranked = getRankedPals();
     const preferredPal = ranked[0];
 
-    console.log("[FRONTEND] preferredPal =", preferredPal);
-    console.log("[FRONTEND] rankedPals =", JSON.stringify(ranked));
-    console.log("[FRONTEND] scores =", JSON.stringify(scores));
-    console.log("[FRONTEND] answerHistory =", JSON.stringify(answerHistory));
-
-    if (questionTitle) {
-      questionTitle.textContent = "Assigning your PitStop Pal...";
-    }
-
-    if (questionSub) {
-      questionSub.textContent = "Please wait a moment.";
-    }
-
-    if (optionsContainer) {
-      optionsContainer.innerHTML = "";
-    }
-
     try {
       const response = await fetch("/api/quiz/assign", {
         method: "POST",
@@ -383,19 +371,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const data = await response.json();
 
-      console.log("[FRONTEND] API response =", data);
-      console.log("[FRONTEND] requestCount =", data.requestCount);
-
       if (!response.ok) {
         throw new Error(data.error || "Unable to assign a pal.");
       }
 
-      console.log("[FRONTEND] assignedPal from backend =", data.assignedPal);
-      console.log("[FRONTEND] preferredPal from backend =", data.preferredPal);
-
       renderAssignedPal(data.assignedPal);
     } catch (error) {
-      console.error("[FRONTEND] showResult error =", error);
       showDataError(error.message || "Something went wrong while assigning the result.");
     } finally {
       isSubmittingResult = false;
@@ -471,7 +452,10 @@ document.addEventListener("DOMContentLoaded", () => {
     backPrevBtn.addEventListener("click", () => {
       if (currentQuestionIndex > 0) {
         currentQuestionIndex -= 1;
+
+        // EDIT: remove answers from this point onward when going back
         userAnswers = userAnswers.slice(0, currentQuestionIndex);
+
         recalculateStateFromAnswers();
         updateQuestionSet();
         renderQuestion();
