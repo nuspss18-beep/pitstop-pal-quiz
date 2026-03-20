@@ -5,7 +5,7 @@ const pals = {
     badge: "Your organised reset buddy",
     desc: "You handle chaos by slowing down, sorting things out, and building a manageable plan.",
     tip: "Take things one small step at a time.",
-    image: "images/perry.png",
+    image: "perry.png",
     color: "#7bb6ff",
     soft: "#eaf4ff"
   },
@@ -15,7 +15,7 @@ const pals = {
     badge: "Your reflective guide",
     desc: "You like to reconnect with meaning, purpose, and the bigger picture before moving forward.",
     tip: "When stressed, return to your why.",
-    image: "images/ping.png",
+    image: "ping.png",
     color: "#b39ddb",
     soft: "#f2ecfb"
   },
@@ -25,7 +25,7 @@ const pals = {
     badge: "Your movement motivator",
     desc: "You recharge best through motion, fresh air, and physical reset.",
     tip: "A short walk can change your whole mood.",
-    image: "images/ola.png",
+    image: "ola.png",
     color: "#7fd6a3",
     soft: "#eafaf1"
   },
@@ -35,7 +35,7 @@ const pals = {
     badge: "Your comfort fuel pal",
     desc: "You regain energy through food, warmth, and simple physical care.",
     tip: "Don’t forget to nourish yourself properly.",
-    image: "images/ty.png",
+    image: "ty.png",
     color: "#ffb870",
     soft: "#fff2e4"
   },
@@ -45,7 +45,7 @@ const pals = {
     badge: "Your rest-first companion",
     desc: "You know that sometimes the best answer is to pause, sleep, and recover.",
     tip: "Rest is productive too.",
-    image: "images/sky.png",
+    image: "sky.png",
     color: "#8ecae6",
     soft: "#edf8fd"
   },
@@ -55,7 +55,7 @@ const pals = {
     badge: "Your quiet reset buddy",
     desc: "You prefer calm, hobbies, and a little personal space to reset your mind.",
     tip: "A small enjoyable break can help you restart.",
-    image: "images/tobi.png",
+    image: "tobi.png",
     color: "#f4a261",
     soft: "#fff1e7"
   },
@@ -65,7 +65,7 @@ const pals = {
     badge: "Your social support pal",
     desc: "You draw strength from connection, conversation, and being around people you trust.",
     tip: "You don’t have to handle everything alone.",
-    image: "images/iggy.png",
+    image: "iggy.png",
     color: "#f28482",
     soft: "#fff0f0"
   }
