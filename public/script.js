@@ -157,44 +157,127 @@ document.addEventListener("DOMContentLoaded", () => {
     return (pair || []).find((palKey) => palKey && palKey !== chosenPal) || null;
   }
 
+  // Core branch = the pals that compete in Q5
+  const CORE_PALS = ["ping", "perry", "iggy", "tobi"];
+
+  // Special branch = the pals that compete with Ola in Q4
+  const SPECIAL_PALS = ["sky", "ty"];
+
+  // Keep only candidates that belong to a specific pool.
+  function filterPool(candidates, pool) {
+    return uniqueTruthy(candidates).filter((palKey) => pool.includes(palKey));
+  }
+
+  // Pick a single valid pal for a question.
+  // It tries the preferred list first, then fallback list.
+  function pickOneCandidate(questionId, preferred = [], fallback = []) {
+    return getValidCandidates(questionId, [...preferred, ...fallback])[0] || null;
+  }
+
   function buildAdaptiveQuestions() {
+    // We expect 3 adaptive templates: q4, q5, q6
     if (!Array.isArray(adaptiveTemplates) || adaptiveTemplates.length < 3) {
       return [];
     }
 
+    // Seeds are the winners from the first 3 fixed questions.
     const seeds = getSeedWinners();
 
+    // Do not build adaptive questions until all fixed questions are answered.
     if (seeds.length < fixedQuestions.length) {
       return [];
     }
 
-    const [seed1, seed2, seed3] = seeds;
+    const q4Template = adaptiveTemplates[0];
+    const q5Template = adaptiveTemplates[1];
+    const q6Template = adaptiveTemplates[2];
 
-    const q4Pair = chooseTwoCandidates(
-      adaptiveTemplates[0].id,
-      [seed1, seed2],
-      [seed3]
+    // Split the fixed-question winners into two branches:
+    // - core pals go to Q5
+    // - special pals fight Ola in Q4
+    const coreSeeds = filterPool(seeds, CORE_PALS);
+    const specialSeeds = filterPool(seeds, SPECIAL_PALS);
+
+    // -------------------------
+    // Q4: Ola must always appear
+    // -------------------------
+    // Choose the best opponent for Ola from sky/ty side.
+    const q4Opponent = pickOneCandidate(
+      q4Template.id,
+      specialSeeds,
+      SPECIAL_PALS
     );
+
+    // Force Ola into Q4.
+    const q4Pair = chooseTwoCandidates(
+      q4Template.id,
+      ["ola", q4Opponent],
+      ["ola", ...SPECIAL_PALS]
+    );
+
     const q4Winner = userAnswers[3]?.pal || q4Pair[0] || null;
     const q4Loser = getOtherPal(q4Pair, q4Winner);
 
+    // -------------------------
+    // Q5: core pals only
+    // -------------------------
     const q5Pair = chooseTwoCandidates(
-      adaptiveTemplates[1].id,
-      [q4Winner, seed3],
-      [q4Loser, seed1, seed2]
+      q5Template.id,
+      coreSeeds,
+      CORE_PALS
     );
+
     const q5Winner = userAnswers[4]?.pal || q5Pair[0] || null;
     const q5Loser = getOtherPal(q5Pair, q5Winner);
 
-    const q6Pair = chooseTwoCandidates(
-      adaptiveTemplates[2].id,
-      [q5Winner, q5Loser],
-      [q4Winner, q4Loser, seed1, seed2, seed3]
+    // -------------------------
+    // Q6: final = winner(Q4) vs winner(Q5)
+    // -------------------------
+    // Left side should come from the Q4 branch.
+    const q6Left = pickOneCandidate(
+      q6Template.id,
+      [q4Winner],
+      [q4Loser, "ola", ...SPECIAL_PALS]
     );
 
-    const q4 = makeHeadToHeadQuestion(adaptiveTemplates[0], q4Pair[0], q4Pair[1]);
-    const q5 = makeHeadToHeadQuestion(adaptiveTemplates[1], q5Pair[0], q5Pair[1]);
-    const q6 = makeHeadToHeadQuestion(adaptiveTemplates[2], q6Pair[0], q6Pair[1]);
+    // Right side should come from the Q5 branch.
+    const q6Right = pickOneCandidate(
+      q6Template.id,
+      [q5Winner],
+      [q5Loser, ...CORE_PALS]
+    );
+
+    let q6Pair = null;
+
+    // Best case: we found one valid pal from each branch.
+    if (q6Left && q6Right && q6Left !== q6Right) {
+      q6Pair = [q6Left, q6Right];
+    } else {
+      // Fallback: still try to preserve the "winner vs winner" idea first,
+      // then use the rest of the pool if some adaptive text is missing.
+      q6Pair = chooseTwoCandidates(
+        q6Template.id,
+        [q4Winner, q5Winner],
+        [q4Loser, q5Loser, "ola", ...SPECIAL_PALS, ...CORE_PALS]
+      );
+    }
+
+    // Build the actual question objects shown on screen.
+    const q4 = makeHeadToHeadQuestion(q4Template, q4Pair[0], q4Pair[1]);
+    const q5 = makeHeadToHeadQuestion(q5Template, q5Pair[0], q5Pair[1]);
+    const q6 = makeHeadToHeadQuestion(q6Template, q6Pair[0], q6Pair[1]);
+
+    // Optional debug log so you can trace how the branches were formed.
+    console.log({
+      seeds,
+      coreSeeds,
+      specialSeeds,
+      q4Pair,
+      q4Winner,
+      q5Pair,
+      q5Winner,
+      q6Pair
+    });
 
     return [q4, q5, q6].filter(Boolean);
   }
