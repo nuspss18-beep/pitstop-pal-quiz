@@ -77,28 +77,28 @@ const fixedQuestions = [
   {
     id: "q1",
     q: "Q1 – CourseReg Storm",
-    sub: "Your timetable explodes into chaos. What do you do first?",
+    sub: "Your timetable explodes into chaos. Everything is messy, there are modules with clashing time slots and full of uncertainty.",
     a: [
-      { text: "Pause. Breathe. Sort modules by priority.", pal: "perry", points: 1 },
-      { text: "Step back and ask what aligns with your goals.", pal: "ping", points: 1 }
+      { text: "Pause. Breathe. Sort modules by priority and what you can realistically manage.", pal: "perry", points: 1 },
+      { text: "Step back and ask which modules truly align with where you want to go in life.", pal: "ping", points: 1 }
     ]
   },
   {
     id: "q2",
     q: "Q2 – CCA Fair at Town Green",
-    sub: "How do you tackle this CCA fair?",
+    sub: "You step into a vibrant hall filled with music, buzzing booths, and enthusiastic seniors inviting you to join. How do you tackle this CCA fair? ",
     a: [
-      { text: "Explore around with friends.", pal: "iggy", points: 1 },
-      { text: "Go straight to the CCA that matches your interests.", pal: "tobi", points: 1 }
+      { text: "You follow your friends around the fair to explore", pal: "iggy", points: 1 },
+      { text: "You spot a CCA that aligns with your hobbies and interests, GO STRAIGHT THERE!!!", pal: "tobi", points: 1 }
     ]
   },
   {
     id: "q3",
     q: "Q3 – Unexpected Deadline",
-    sub: "Brain fog sets in. What do you do?",
+    sub: "It's time to get locked in. But as you work through your assignment, brain fog set in",
     a: [
-      { text: "Sleep first and continue later.", pal: "sky", points: 1 },
-      { text: "Grab a quick snack to power through.", pal: "ty", points: 1 }
+      { text: "Sleep first and tackle the assignment when you are feeling refreshed ", pal: "sky", points: 1 },
+      { text: "Have a quick, yummy snack to power you through the next few hours of work", pal: "ty", points: 1 }
     ]
   }
 ];
@@ -123,13 +123,13 @@ const adaptiveTemplates = [
 
 const adaptiveOptionBank = {
   perry: {
-    q4: "Pause, sort the mess, and make a simple plan.",
+    
     q5: "Set one tiny achievable goal and begin there.",
     q6: "Write down tomorrow’s priorities before resting."
   },
   ping: {
-    q4: "Reconnect with why this challenge matters to you.",
-    q5: "Reflect on your bigger purpose and values.",
+    
+    q5: "Journal to reconnect to your bigger purpose",
     q6: "Look back on what felt meaningful this semester."
   },
   ola: {
@@ -138,23 +138,23 @@ const adaptiveOptionBank = {
     q6: "Go for a walk and enjoy the outdoors."
   },
   ty: {
-    q4: "Stabilise with water and a simple snack first.",
+    q4: "Eat a sweet treat to cheer yourself on!",
     q5: "Nourish yourself so your energy can return.",
     q6: "Treat yourself to food that feels comforting."
   },
   sky: {
-    q4: "Step away and prioritise rest before reacting.",
+    q4: "Sleep; You want to avoid seeing your grades for now",
     q5: "Protect your sleep and recover properly.",
     q6: "Catch up on proper rest and sleep early."
   },
   tobi: {
-    q4: "Take a short timeout before deciding anything.",
-    q5: "Do something you enjoy to reset your mind.",
+    
+    q5: "Take some time to do something you love and remind yourself of your passion",
     q6: "Switch off and spend quiet time with your hobbies."
   },
   iggy: {
-    q4: "Reach out to someone and talk it through.",
-    q5: "Reconnect with someone who understands.",
+    
+    q5: "Talk to someone who understands.",
     q6: "Celebrate by catching up with friends."
   }
 };
