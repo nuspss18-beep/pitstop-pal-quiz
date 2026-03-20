@@ -129,7 +129,8 @@ In most deployments, it will be:
 ### What you need
 You need the **admin key**.
 This is a secret used to protect stock controls from the public.
-Admin Key: nuspss121111
+
+**Admin Key: nuspss121111**
 
 ### Basic admin steps
 1. Open the admin page.
