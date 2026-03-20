@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const allPalsScreen = document.getElementById("all-pals-screen");
 
   const startBtn = document.getElementById("start-btn");
-  const backHomeBtn = document.getElementById("back-home-btn");
+  const backStartBtn = document.getElementById("back-start-btn");
   const backPrevBtn = document.getElementById("back-prev-btn");
   const resultHomeBtn = document.getElementById("result-home-btn");
   const retryBtn = document.getElementById("retry-btn");
@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const allPalsGrid = document.getElementById("all-pals-grid");
 
-  const backStartBtn = document.getElementById("back-start-btn");
+
 
 
   let currentQuestionIndex = 0;
@@ -421,10 +421,6 @@ document.addEventListener("DOMContentLoaded", () => {
     backStartBtn.addEventListener("click", resetToStart);
   }
 
-  if (backHomeBtn) {
-    backHomeBtn.addEventListener("click", resetToStart);
-  }
-
   if (resultHomeBtn) {
     resultHomeBtn.addEventListener("click", resetToStart);
   }
@@ -451,13 +447,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (backPrevBtn) {
-  backPrevBtn.addEventListener("click", () => {
-    if (currentQuestionIndex > 0) {
-      currentQuestionIndex -= 1;
-      renderQuestion();
-    }
-  });
-}
+    backPrevBtn.addEventListener("click", () => {
+      if (currentQuestionIndex > 0) {
+        currentQuestionIndex -= 1;
+        renderQuestion();
+      }
+    });
+  }
 
   showScreen(startScreen);
 });
