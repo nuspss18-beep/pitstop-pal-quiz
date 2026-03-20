@@ -92,31 +92,16 @@ function chooseLeastDistributedAvailable(state, candidates) {
   })[0];
 }
 
-// EDIT:
-// 1. Use ranked winning pals from frontend
-// 2. Prefer the highest-ranked pal still above 30% stock
-// 3. If none are above threshold, use least-distributed available fallback
-function chooseAssignedPal(state, preferredPal, rankedPals) {
-  const available = PAL_KEYS.filter((key) => Number(state.stock?.[key] || 0) > 0);
-
-  if (available.length === 0) {
-    return null;
+function chooseAssignedPal(state, preferredPal, fallbackPal) {
+  if (preferredPal && Number(state.stock?.[preferredPal] || 0) > 0) {
+    return preferredPal;
   }
 
-  const ranked = Array.isArray(rankedPals) && rankedPals.length > 0
-    ? rankedPals.filter((key) => PAL_KEYS.includes(key))
-    : [preferredPal, ...PAL_KEYS.filter((key) => key !== preferredPal)];
-
-  // first pass: take highest-ranked pal still above 30% of original stock
-  for (const palKey of ranked) {
-    if (!available.includes(palKey)) continue;
-    if (isAboveThreshold(state, palKey)) {
-      return palKey;
-    }
+  if (fallbackPal && Number(state.stock?.[fallbackPal] || 0) > 0) {
+    return fallbackPal;
   }
 
-  // second pass: fallback to least-distributed available
-  return chooseLeastDistributedAvailable(state, available);
+  return PAL_KEYS.find((key) => Number(state.stock?.[key] || 0) > 0) || null;
 }
 
 export default {
@@ -213,14 +198,14 @@ export class InventoryDO {
 
     const scores = body?.scores || {};
     const answerHistory = Array.isArray(body?.answerHistory) ? body.answerHistory : [];
-    const rankedPals = Array.isArray(body?.rankedPals) ? body.rankedPals : [];
 
     const preferredPal = body?.preferredPal || getPreferredPal(scores, answerHistory);
-    const state = await this.loadState();
+    const fallbackPal = body?.fallbackPal || null;
 
+    const state = await this.loadState();
     state.requestCount = Number(state.requestCount || 0) + 1;
 
-    const assignedPal = chooseAssignedPal(state, preferredPal, rankedPals);
+    const assignedPal = chooseAssignedPal(state, preferredPal, fallbackPal);
 
     if (!assignedPal) {
       return json({ error: "All pals are out of stock." }, 409);
@@ -235,9 +220,11 @@ export class InventoryDO {
     return json({
       assignedPal,
       preferredPal,
+      fallbackPal,
       requestCount: state.requestCount,
       remainingTotal: totalRemaining(state.stock),
-      stock: state.stock
+      stock: state.stock,
+      distributed: state.distributed
     });
   }
 

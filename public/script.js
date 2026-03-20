@@ -39,14 +39,34 @@ document.addEventListener("DOMContentLoaded", () => {
     ? new URL(".", currentScript.src).href
     : window.location.href;
 
+  /**
+   * Returns a full asset URL relative to the current script location.
+   *
+   * @param {string} fileName The asset file name.
+   * @returns {string} The resolved asset URL.
+   */
   function getAssetUrl(fileName) {
     return new URL(fileName, assetBase).href;
   }
 
+  /**
+   * Returns the total number of questions shown in the quiz.
+   * This assumes:
+   * - fixedQuestions contains Q1 to Q3
+   * - adaptiveTemplates contains Q4 to Q6
+   *
+   * @returns {number} Total number of questions.
+   */
   function getTotalQuestionCount() {
     return fixedQuestions.length + adaptiveTemplates.length;
   }
 
+  /**
+   * Hides all screens and shows only the requested screen.
+   *
+   * @param {HTMLElement|null} screen The screen to display.
+   * @returns {void}
+   */
   function showScreen(screen) {
     [startScreen, quizScreen, resultScreen, allPalsScreen].forEach((section) => {
       if (section) {
@@ -59,6 +79,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  /**
+   * Shows a friendly error message inside the quiz screen.
+   * Used when question data or bracket generation is invalid.
+   *
+   * @param {string} message The error message to display.
+   * @returns {void}
+   */
   function showDataError(message) {
     showScreen(quizScreen);
 
@@ -72,6 +99,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (backPrevBtn) backPrevBtn.classList.add("hidden");
   }
 
+  /**
+   * Stores a minimal copy of the selected answer.
+   *
+   * @param {{ pal: string, text?: string }} opt The clicked option.
+   * @returns {{ pal: string, text: string }} A cloned answer object.
+   */
   function cloneAnswer(opt) {
     return {
       pal: opt.pal,
@@ -79,14 +112,24 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  function uniqueTruthy(items) {
-    return [...new Set((items || []).filter(Boolean))];
-  }
-
+  /**
+   * Returns true only when all fixed questions (Q1 to Q3) have been answered.
+   *
+   * @returns {boolean} Whether Q1 to Q3 are complete.
+   */
   function hasCompletedFixedQuestions() {
     return fixedQuestions.every((_, index) => Boolean(userAnswers[index]?.pal));
   }
 
+  /**
+   * Returns the winners of the fixed questions only.
+   * These are:
+   * - Q1 winner
+   * - Q2 winner
+   * - Q3 winner
+   *
+   * @returns {string[]} Seed winners from the first 3 questions.
+   */
   function getSeedWinners() {
     return userAnswers
       .slice(0, fixedQuestions.length)
@@ -94,36 +137,31 @@ document.addEventListener("DOMContentLoaded", () => {
       .filter(Boolean);
   }
 
+  /**
+   * Reads adaptive option text for a specific pal and question.
+   * Example:
+   * adaptiveOptionBank["ola"]["q4"]
+   *
+   * @param {string} palKey The pal key.
+   * @param {string} questionId The question id, such as q4/q5/q6.
+   * @returns {string|null} The text if available, else null.
+   */
   function getAdaptiveText(palKey, questionId) {
     return adaptiveOptionBank?.[palKey]?.[questionId] || null;
   }
 
-  function getValidCandidates(questionId, candidates) {
-    return uniqueTruthy(candidates).filter((palKey) => {
-      return Boolean(getAdaptiveText(palKey, questionId));
-    });
-  }
-
-  function chooseTwoCandidates(questionId, primary = [], secondary = []) {
-    let selected = getValidCandidates(questionId, primary).slice(0, 2);
-
-    if (selected.length < 2) {
-      const backup = getValidCandidates(questionId, secondary).filter((palKey) => {
-        return !selected.includes(palKey);
-      });
-      selected = [...selected, ...backup.slice(0, 2 - selected.length)];
-    }
-
-    if (selected.length < 2) {
-      const emergency = getValidCandidates(questionId, PAL_KEYS).filter((palKey) => {
-        return !selected.includes(palKey);
-      });
-      selected = [...selected, ...emergency.slice(0, 2 - selected.length)];
-    }
-
-    return selected.slice(0, 2);
-  }
-
+  /**
+   * Creates a 2-option head-to-head question object.
+   * This is used for Q4, Q5, and Q6.
+   *
+   * The function only succeeds if both pals have valid adaptive text
+   * for the requested template id.
+   *
+   * @param {{ id: string, q: string, sub: string }} template The adaptive template.
+   * @param {string|null} palA First pal.
+   * @param {string|null} palB Second pal.
+   * @returns {object|null} The generated question object or null if invalid.
+   */
   function makeHeadToHeadQuestion(template, palA, palB) {
     if (!template || !palA || !palB) {
       return null;
@@ -153,38 +191,93 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  function getOtherPal(pair, chosenPal) {
-    return (pair || []).find((palKey) => palKey && palKey !== chosenPal) || null;
+  /**
+   * Returns the chosen pal for a given question index.
+   *
+   * Index map:
+   * 0 = Q1
+   * 1 = Q2
+   * 2 = Q3
+   * 3 = Q4
+   * 4 = Q5
+   * 5 = Q6
+   *
+   * @param {number} index The answer index.
+   * @returns {string|null} The chosen pal or null if unanswered.
+   */
+  function getAnswerPal(index) {
+    return userAnswers[index]?.pal || null;
   }
 
-  // Core branch = the pals that compete in Q5
-  const CORE_PALS = ["ping", "perry", "iggy", "tobi"];
+  /**
+   * Builds a full snapshot of the bracket state.
+   *
+   * Bracket rules:
+   * Q1 = Perry vs Ping
+   * Q2 = Iggy vs Tobi
+   * Q3 = Sky vs Ty
+   * Q4 = Ola vs winner(Q3)
+   * Q5 = winner(Q1) vs winner(Q2)
+   * Q6 = winner(Q4) vs winner(Q5)
+   *
+   * preferredPal = winner(Q6)
+   * fallbackPal  = winner(Q5)
+   *
+   * @returns {{
+   *   q1Winner: string|null,
+   *   q2Winner: string|null,
+   *   q3Winner: string|null,
+   *   q4Winner: string|null,
+   *   q5Winner: string|null,
+   *   q6Winner: string|null,
+   *   q4Pair: string[]|null,
+   *   q5Pair: string[]|null,
+   *   q6Pair: string[]|null,
+   *   preferredPal: string|null,
+   *   fallbackPal: string|null
+   * }}
+   */
+  function getBracketSnapshot() {
+    const q1Winner = getAnswerPal(0);
+    const q2Winner = getAnswerPal(1);
+    const q3Winner = getAnswerPal(2);
+    const q4Winner = getAnswerPal(3);
+    const q5Winner = getAnswerPal(4);
+    const q6Winner = getAnswerPal(5);
 
-  // Special branch = the pals that compete with Ola in Q4
-  const SPECIAL_PALS = ["sky", "ty"];
-
-  // Keep only candidates that belong to a specific pool.
-  function filterPool(candidates, pool) {
-    return uniqueTruthy(candidates).filter((palKey) => pool.includes(palKey));
+    return {
+      q1Winner,
+      q2Winner,
+      q3Winner,
+      q4Winner,
+      q5Winner,
+      q6Winner,
+      q4Pair: q3Winner ? ["ola", q3Winner] : null,
+      q5Pair: q1Winner && q2Winner ? [q1Winner, q2Winner] : null,
+      q6Pair: q4Winner && q5Winner ? [q4Winner, q5Winner] : null,
+      preferredPal: q6Winner,
+      fallbackPal: q5Winner
+    };
   }
 
-  // Pick a single valid pal for a question.
-  // It tries the preferred list first, then fallback list.
-  function pickOneCandidate(questionId, preferred = [], fallback = []) {
-    return getValidCandidates(questionId, [...preferred, ...fallback])[0] || null;
-  }
-
+  /**
+   * Generates the adaptive questions using the strict bracket flow.
+   *
+   * Important:
+   * - Q4 and Q5 become available only after Q1 to Q3 are complete.
+   * - Q6 becomes available only after Q4 and Q5 are answered.
+   *
+   * This avoids the old pool-based logic and forces the frontend
+   * to follow the exact tournament structure.
+   *
+   * @returns {object[]} The adaptive questions to append after fixedQuestions.
+   */
   function buildAdaptiveQuestions() {
-    // We expect 3 adaptive templates: q4, q5, q6
     if (!Array.isArray(adaptiveTemplates) || adaptiveTemplates.length < 3) {
       return [];
     }
 
-    // Seeds are the winners from the first 3 fixed questions.
-    const seeds = getSeedWinners();
-
-    // Do not build adaptive questions until all fixed questions are answered.
-    if (seeds.length < fixedQuestions.length) {
+    if (!hasCompletedFixedQuestions()) {
       return [];
     }
 
@@ -192,96 +285,45 @@ document.addEventListener("DOMContentLoaded", () => {
     const q5Template = adaptiveTemplates[1];
     const q6Template = adaptiveTemplates[2];
 
-    // Split the fixed-question winners into two branches:
-    // - core pals go to Q5
-    // - special pals fight Ola in Q4
-    const coreSeeds = filterPool(seeds, CORE_PALS);
-    const specialSeeds = filterPool(seeds, SPECIAL_PALS);
+    const {
+      q1Winner,
+      q2Winner,
+      q3Winner,
+      q4Winner,
+      q5Winner
+    } = getBracketSnapshot();
 
-    // -------------------------
-    // Q4: Ola must always appear
-    // -------------------------
-    // Choose the best opponent for Ola from sky/ty side.
-    const q4Opponent = pickOneCandidate(
-      q4Template.id,
-      specialSeeds,
-      SPECIAL_PALS
-    );
+    const q4 = makeHeadToHeadQuestion(q4Template, "ola", q3Winner);
+    const q5 = makeHeadToHeadQuestion(q5Template, q1Winner, q2Winner);
 
-    // Force Ola into Q4.
-    const q4Pair = chooseTwoCandidates(
-      q4Template.id,
-      ["ola", q4Opponent],
-      ["ola", ...SPECIAL_PALS]
-    );
+    const adaptiveQuestions = [];
 
-    const q4Winner = userAnswers[3]?.pal || q4Pair[0] || null;
-    const q4Loser = getOtherPal(q4Pair, q4Winner);
+    if (q4) adaptiveQuestions.push(q4);
+    if (q5) adaptiveQuestions.push(q5);
 
-    // -------------------------
-    // Q5: core pals only
-    // -------------------------
-    const q5Pair = chooseTwoCandidates(
-      q5Template.id,
-      coreSeeds,
-      CORE_PALS
-    );
-
-    const q5Winner = userAnswers[4]?.pal || q5Pair[0] || null;
-    const q5Loser = getOtherPal(q5Pair, q5Winner);
-
-    // -------------------------
-    // Q6: final = winner(Q4) vs winner(Q5)
-    // -------------------------
-    // Left side should come from the Q4 branch.
-    const q6Left = pickOneCandidate(
-      q6Template.id,
-      [q4Winner],
-      [q4Loser, "ola", ...SPECIAL_PALS]
-    );
-
-    // Right side should come from the Q5 branch.
-    const q6Right = pickOneCandidate(
-      q6Template.id,
-      [q5Winner],
-      [q5Loser, ...CORE_PALS]
-    );
-
-    let q6Pair = null;
-
-    // Best case: we found one valid pal from each branch.
-    if (q6Left && q6Right && q6Left !== q6Right) {
-      q6Pair = [q6Left, q6Right];
-    } else {
-      // Fallback: still try to preserve the "winner vs winner" idea first,
-      // then use the rest of the pool if some adaptive text is missing.
-      q6Pair = chooseTwoCandidates(
-        q6Template.id,
-        [q4Winner, q5Winner],
-        [q4Loser, q5Loser, "ola", ...SPECIAL_PALS, ...CORE_PALS]
-      );
+    if (q4Winner && q5Winner) {
+      const q6 = makeHeadToHeadQuestion(q6Template, q4Winner, q5Winner);
+      if (q6) {
+        adaptiveQuestions.push(q6);
+      }
     }
 
-    // Build the actual question objects shown on screen.
-    const q4 = makeHeadToHeadQuestion(q4Template, q4Pair[0], q4Pair[1]);
-    const q5 = makeHeadToHeadQuestion(q5Template, q5Pair[0], q5Pair[1]);
-    const q6 = makeHeadToHeadQuestion(q6Template, q6Pair[0], q6Pair[1]);
+    console.log("[BRACKET SNAPSHOT]", getBracketSnapshot());
 
-    // Optional debug log so you can trace how the branches were formed.
-    console.log({
-      seeds,
-      coreSeeds,
-      specialSeeds,
-      q4Pair,
-      q4Winner,
-      q5Pair,
-      q5Winner,
-      q6Pair
-    });
-
-    return [q4, q5, q6].filter(Boolean);
+    return adaptiveQuestions;
   }
 
+  /**
+   * Rebuilds the question list shown to the user.
+   *
+   * Before Q1 to Q3 are complete:
+   *   currentQuestions = fixedQuestions only
+   *
+   * After Q1 to Q3 are complete:
+   *   currentQuestions = fixedQuestions + adaptive bracket questions
+   *
+   * @returns {void}
+   */
   function updateQuestionSet() {
     if (hasCompletedFixedQuestions()) {
       currentQuestions = [...fixedQuestions, ...buildAdaptiveQuestions()];
@@ -290,6 +332,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  /**
+   * Returns at most 2 options for the question.
+   * This ensures the UI always shows exactly two choices.
+   *
+   * @param {object} item The question object.
+   * @returns {object[]} The visible answer options.
+   */
   function getVisibleOptions(item) {
     if (!item || !Array.isArray(item.a)) {
       return [];
@@ -298,6 +347,11 @@ document.addEventListener("DOMContentLoaded", () => {
     return item.a.slice(0, 2);
   }
 
+  /**
+   * Resets the quiz state and starts from Q1.
+   *
+   * @returns {void}
+   */
   function startQuiz() {
     currentQuestionIndex = 0;
     lastResultKey = null;
@@ -308,6 +362,18 @@ document.addEventListener("DOMContentLoaded", () => {
     renderQuestion();
   }
 
+  /**
+   * Renders the current question on screen.
+   *
+   * Flow:
+   * 1. Validate question data
+   * 2. Build adaptive questions when fixed questions are done
+   * 3. Render exactly 2 options
+   * 4. Save selected answer
+   * 5. Move to next question or show result
+   *
+   * @returns {Promise<void>|void}
+   */
   function renderQuestion() {
     if (!Array.isArray(currentQuestions) || currentQuestions.length === 0) {
       showDataError("currentQuestions is empty. Please check quiz generation logic.");
@@ -400,15 +466,32 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  /**
+   * Returns the frontend's final preferred pal.
+   * This must be the winner of Q6 only.
+   *
+   * @returns {string|null} The Q6 winner.
+   */
   function getFrontendWinner() {
-    for (let i = userAnswers.length - 1; i >= 0; i -= 1) {
-      if (userAnswers[i]?.pal) {
-        return userAnswers[i].pal;
-      }
-    }
-    return null;
+    return getBracketSnapshot().preferredPal;
   }
 
+  /**
+   * Returns the fallback pal for stock failure.
+   * This must be the winner of Q5.
+   *
+   * @returns {string|null} The Q5 winner.
+   */
+  function getFallbackWinner() {
+    return getBracketSnapshot().fallbackPal;
+  }
+
+  /**
+   * Renders the assigned pal on the result screen.
+   *
+   * @param {string} palKey The final assigned pal key from backend.
+   * @returns {void}
+   */
   function renderAssignedPal(palKey) {
     if (typeof pals === "undefined") {
       showDataError("pals is missing. Please check data.js for errors.");
@@ -448,14 +531,29 @@ document.addEventListener("DOMContentLoaded", () => {
     showScreen(resultScreen);
   }
 
+  /**
+   * Sends the final result request to the backend.
+   *
+   * Frontend responsibility:
+   * - preferredPal = winner(Q6)
+   * - fallbackPal  = winner(Q5)
+   *
+   * Backend responsibility:
+   * - if preferredPal stock > 0, use preferredPal
+   * - else if fallbackPal stock > 0, use fallbackPal
+   * - else apply backend fallback logic
+   *
+   * @returns {Promise<void>}
+   */
   async function showResult() {
     if (isSubmittingResult) return;
     isSubmittingResult = true;
 
     const preferredPal = getFrontendWinner();
+    const fallbackPal = getFallbackWinner();
 
     if (!preferredPal) {
-      showDataError("Could not determine final winner.");
+      showDataError("Could not determine the Q6 winner. Please check the bracket flow.");
       isSubmittingResult = false;
       return;
     }
@@ -468,9 +566,11 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         body: JSON.stringify({
           preferredPal,
+          fallbackPal,
           seedWinners: getSeedWinners(),
           answerHistory: userAnswers.map((answer) => answer?.pal).filter(Boolean),
-          quizVersion: "elimination-6"
+          bracket: getBracketSnapshot(),
+          quizVersion: "elimination-6-bracket"
         })
       });
 
@@ -488,6 +588,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  /**
+   * Renders the "Meet all pals" grid.
+   *
+   * @returns {void}
+   */
   function renderAllPals() {
     if (!allPalsGrid || typeof pals === "undefined") return;
 
@@ -509,6 +614,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  /**
+   * Returns the user to the start screen and clears quiz progress.
+   *
+   * @returns {void}
+   */
   function resetToStart() {
     currentQuestionIndex = 0;
     lastResultKey = null;
@@ -516,6 +626,16 @@ document.addEventListener("DOMContentLoaded", () => {
     currentQuestions = [...fixedQuestions];
     showScreen(startScreen);
   }
+
+  /**
+   * Debug helper for browser console.
+   * Example:
+   * quizDebug.getBracketSnapshot()
+   */
+  window.quizDebug = {
+    getAnswers: () => userAnswers,
+    getBracketSnapshot
+  };
 
   if (startBtn) {
     startBtn.addEventListener("click", startQuiz);
