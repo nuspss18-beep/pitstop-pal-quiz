@@ -558,7 +558,7 @@ If you only have one minute to explain the project to the next team, say this:
 
 ## 20. Ownership and usage statement
 
-This project belongs to **NUS Peer Student Supporters (NUS PSS)** and is used for the **welfare pack event at PitStop@UTown on April 10**.
+This project belongs to **NUS Peer Student Supporters (NUS PSS)** and is used for the **welfare pack event at PitStop@UTown on April 10 2026**.
 
 It is intended strictly for:
 - student engagement
