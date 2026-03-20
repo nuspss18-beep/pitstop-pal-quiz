@@ -28,9 +28,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const allPalsGrid = document.getElementById("all-pals-grid");
 
-
-
-
   let currentQuestionIndex = 0;
   let lastResultKey = null;
   let scores = createEmptyScores();
@@ -42,7 +39,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let rankedPals = [];
 
   const currentScript = document.querySelector('script[src$="script.js"]');
-  const assetBase = currentScript ? new URL(".", currentScript.src).href : window.location.href;
+  const assetBase = currentScript
+    ? new URL(".", currentScript.src).href
+    : window.location.href;
 
   function getAssetUrl(fileName) {
     return new URL(fileName, assetBase).href;
@@ -71,20 +70,29 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function getAdaptiveCandidatesForQuestion(questionId) {
+    return getRankedPals().filter((palKey) => {
+      return Boolean(adaptiveOptionBank?.[palKey]?.[questionId]);
+    });
+  }
+
   function buildAdaptiveQuestions() {
     const ranking = getRankedPals();
     rankedPals = ranking;
 
-    const candidates = ranking.slice(0, 4);
-
     return adaptiveTemplates.map((template, index) => {
       const optionCount = index < 2 ? 3 : 4;
+
+      const selectedPals = getAdaptiveCandidatesForQuestion(template.id).slice(
+        0,
+        optionCount
+      );
 
       return {
         id: template.id,
         q: template.q,
         sub: template.sub,
-        a: candidates.slice(0, optionCount).map((palKey) => ({
+        a: selectedPals.map((palKey) => ({
           text: adaptiveOptionBank[palKey][template.id],
           pal: palKey,
           points: 1
@@ -99,9 +107,9 @@ document.addEventListener("DOMContentLoaded", () => {
       points: opt.points || 0,
       extra: Array.isArray(opt.extra)
         ? opt.extra.map((change) => ({
-          pal: change.pal,
-          points: change.points || 0
-        }))
+            pal: change.pal,
+            points: change.points || 0
+          }))
         : []
     };
   }
@@ -204,6 +212,11 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    if (!Array.isArray(item.a) || item.a.length === 0) {
+      showDataError(`No valid options found for ${item.id || "this question"}.`);
+      return;
+    }
+
     if (backPrevBtn) {
       backPrevBtn.classList.toggle("hidden", currentQuestionIndex === 0);
     }
@@ -234,6 +247,8 @@ document.addEventListener("DOMContentLoaded", () => {
     optionsContainer.innerHTML = "";
 
     item.a.forEach((opt) => {
+      if (!opt || !opt.pal || !opt.text) return;
+
       const pal = pals[opt.pal];
       if (!pal) return;
 
@@ -243,8 +258,8 @@ document.addEventListener("DOMContentLoaded", () => {
       button.style.setProperty("--accent-soft", pal.soft || "#eee");
 
       button.innerHTML = `
-      <p class="option-desc">${opt.text}</p>
-    `;
+        <p class="option-desc">${opt.text}</p>
+      `;
 
       button.addEventListener("click", async () => {
         console.log("Option clicked:", opt.text, "| pal =", opt.pal, "| qIndex =", currentQuestionIndex);
@@ -325,8 +340,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     recalculateStateFromAnswers();
 
-    const preferredPal = getRankedPals()[0];
     const ranked = getRankedPals();
+    const preferredPal = ranked[0];
 
     console.log("[FRONTEND] preferredPal =", preferredPal);
     console.log("[FRONTEND] rankedPals =", JSON.stringify(ranked));
