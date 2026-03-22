@@ -95,7 +95,7 @@ const fixedQuestions = [
   {
     id: "q3",
     q: "Q3 – Unexpected Deadline",
-    sub: "It's time to get locked in. But as you work through your assignment, brain fog set in",
+    sub: "It's time to get locked in. But as you work through your assignment, brain fog sets in.",
     a: [
       { text: "Sleep first and tackle the assignment when you are feeling refreshed ", pal: "sky", points: 1 },
       { text: "Have a quick, yummy snack to power you through the next few hours of work", pal: "ty", points: 1 }
